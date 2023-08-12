@@ -11,6 +11,9 @@
 ## Later:
 * allow using local binary instead of the shipped binary for rg etc...
 
+## Current UI
+![Screenshot of app](./screenshot.png?raw=true "Title")
+
 
 -----------------
 
