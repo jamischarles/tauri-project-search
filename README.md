@@ -1,11 +1,17 @@
 # (Tauri based) Project search
 
 ## TODO:
-- [ ] post periodic screenshots of progress on the readme of the UI 
-- inputs to support
-  - folder to search
-  - search string
+- [ ] Left rail search results. Right rail: bat view of file in result. 
+- [ ] Able to tab/arrow/click to cycle through the lines of each file in the right rail (preview)
+- [x] post periodic screenshots of progress on the readme of the UI 
+- [x] inputs to support
+  - [x] folder to search
+  - [x] search string
+
+
 - format output to be readable (cm6?)  Just keep it simple for now...    
+(maybe we use the JSON output, then make some simple UI output...)
+file + code formatting? cm6? Basic readonly one that I made?
 
 
 ## Later:

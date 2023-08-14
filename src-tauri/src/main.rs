@@ -10,6 +10,9 @@ fn greet(name: &str) -> String {
 fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![greet])
+        .plugin(tauri_plugin_persisted_scope::init()) //plugin to persist directory access permissions
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
+
+
