@@ -6,6 +6,7 @@
 //     SubmoduleIgnore,
 // };
 use std::env;
+use std::path::Path;
 // use std::path::Path;
 use std::str;
 
@@ -14,12 +15,13 @@ use std::{error::Error, ffi::OsString, io::IsTerminal};
 // ripgrep crate
 use {
     grep::{
-        cli,                                    // not needed for us?
-        printer::{ColorSpecs, StandardBuilder}, // not needed for us? or we can adjust?
+        // cli,                  // not needed for us?
+        printer::JSONBuilder, // not needed for us? or we can adjust?
         regex::RegexMatcher,
         searcher::{BinaryDetection, SearcherBuilder},
     },
-    termcolor::ColorChoice, // not needed for us?
+    ignore::WalkBuilder,
+    // termcolor::ColorChoice, // not needed for us?
     walkdir::WalkDir,
 };
 
@@ -48,7 +50,10 @@ fn main() {
     // 1) search string
     // 2) starting path
     // 3) ignore pattern / options (maybe just options object) that we parse here...
-    let result = match search("path", &["../".into()]) {
+    //
+    let folder_to_search = project_root_path.join("src"); // ./src
+                                                          //
+    let result = match search("Greet", &[folder_to_search.into_os_string()]) {
         Ok(result) => result,
         Err(e) => panic!("failed to search: {}", e),
     };
@@ -60,6 +65,68 @@ fn main() {
         .invoke_handler(tauri::generate_handler![greet])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+// TODO: don't spend longer than ONE day on this path. Don't get distracted. If CLI is simpler, go with that approach.
+// path of least resistance!!!
+fn search(pattern: &str, paths: &[OsString]) -> Result<(), Box<dyn Error>> {
+    let matcher = RegexMatcher::new_line_matcher(&pattern)?;
+    // let JSON_RESULT: CounterWriter;
+
+    let mut searcher = SearcherBuilder::new()
+        .binary_detection(BinaryDetection::quit(b'\x00'))
+        .line_number(false)
+        .build();
+    // let mut printer = JSONBuilder::new().build();
+    //
+    // should we write results to a file? or just to memory? temp file might be nice...
+    // TODO: replace the CLI stdout with another writer
+    // let mut printer = JSONBuilder::new().build(cli::stdout(ColorChoice::Never));
+    let result_to_store = vec![];
+    let mut printer = JSONBuilder::new().build(result_to_store);
+    // we can provide a vector array as a writable... interesting!!!
+    // https://docs.rs/grep-printer/0.2.1/grep_printer/index.html ^
+
+    // .color_specs(ColorSpecs::default_with_color())
+    // .build(cli::stdout(if std::io::stdout().is_terminal() {
+    //     ColorChoice::Auto
+    // } else {
+    //     ColorChoice::Never
+    // }));
+
+    for path in paths {
+        println!("path{:?}", path);
+        // }
+
+        // for result in WalkDir::new(path) {
+        for result in WalkBuilder::new(path).hidden(true).build() {
+            let dent = match result {
+                Ok(dent) => dent,
+                Err(err) => {
+                    eprintln!("{}", err);
+                    continue;
+                }
+            };
+            if !dent.file_type().expect("REASON").is_file() {
+                continue;
+            }
+            let result = searcher.search_path(
+                &matcher,
+                dent.path(),
+                printer.sink_with_path(&matcher, dent.path()),
+            );
+            if let Err(err) = result {
+                eprintln!("{}: {}", dent.path().display(), err);
+            }
+        }
+    }
+
+    let output = String::from_utf8(printer.into_inner())?;
+    println!("RESULT OUTPUT: {:?}", output);
+
+    Ok(())
+
+    // println!()
 }
 
 // TODO: Move these into MODELs?
@@ -201,44 +268,3 @@ fn main() {
 //     // ?: Is this kind of like resolving a promise?
 //     Ok(())
 // }
-
-// TODO: don't spend longer than ONE day on this path. Don't get distracted. If CLI is simpler, go with that approach.
-// path of least resistance!!!
-fn search(pattern: &str, paths: &[OsString]) -> Result<(), Box<dyn Error>> {
-    let matcher = RegexMatcher::new_line_matcher(&pattern)?;
-    let mut searcher = SearcherBuilder::new()
-        .binary_detection(BinaryDetection::quit(b'\x00'))
-        .line_number(false)
-        .build();
-    let mut printer = StandardBuilder::new()
-        .color_specs(ColorSpecs::default_with_color())
-        .build(cli::stdout(if std::io::stdout().is_terminal() {
-            ColorChoice::Auto
-        } else {
-            ColorChoice::Never
-        }));
-
-    for path in paths {
-        for result in WalkDir::new(path) {
-            let dent = match result {
-                Ok(dent) => dent,
-                Err(err) => {
-                    eprintln!("{}", err);
-                    continue;
-                }
-            };
-            if !dent.file_type().is_file() {
-                continue;
-            }
-            let result = searcher.search_path(
-                &matcher,
-                dent.path(),
-                printer.sink_with_path(&matcher, dent.path()),
-            );
-            if let Err(err) = result {
-                eprintln!("{}: {}", dent.path().display(), err);
-            }
-        }
-    }
-    Ok(())
-}
