@@ -60,11 +60,34 @@ fn main() {
 
     println!("result:{:?}", result);
 
+    // // .plugin(tauri_plugin_shell::init())
     tauri::Builder::default()
-        .plugin(tauri_plugin_shell::init())
+        // Initialize the plugin
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![greet])
+        .invoke_handler(tauri::generate_handler![my_custom_command])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[tauri::command]
+fn my_custom_command(path: String, search_query: String) -> () {
+    println!(
+        "I was invoked from JavaScript!: {} | {}",
+        path, search_query
+    );
+
+    let result = match search(&search_query, &[path.into()]) {
+        Ok(result) => result,
+        Err(e) => panic!("failed to search: {}", e),
+    };
+
+    println!("result:{:?}", result);
+
+    // Err("This failed!".into());
+    // FIXME: need to populate result
+    result
+    // "Hello from Rust!".into()
 }
 
 // TODO: don't spend longer than ONE day on this path. Don't get distracted. If CLI is simpler, go with that approach.
@@ -124,7 +147,8 @@ fn search(pattern: &str, paths: &[OsString]) -> Result<(), Box<dyn Error>> {
     let output = String::from_utf8(printer.into_inner())?;
     println!("RESULT OUTPUT: {:?}", output);
 
-    Ok(())
+    // FIXME: how to return this to back?
+    Ok(output)
 
     // println!()
 }
