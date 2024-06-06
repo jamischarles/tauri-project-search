@@ -71,7 +71,7 @@ fn main() {
 }
 
 #[tauri::command]
-fn my_custom_command(path: String, search_query: String) -> () {
+fn my_custom_command(path: String, search_query: String) -> String {
     println!(
         "I was invoked from JavaScript!: {} | {}",
         path, search_query
@@ -92,13 +92,13 @@ fn my_custom_command(path: String, search_query: String) -> () {
 
 // TODO: don't spend longer than ONE day on this path. Don't get distracted. If CLI is simpler, go with that approach.
 // path of least resistance!!!
-fn search(pattern: &str, paths: &[OsString]) -> Result<(), Box<dyn Error>> {
+fn search(pattern: &str, paths: &[OsString]) -> Result<String, Box<dyn Error>> {
     let matcher = RegexMatcher::new_line_matcher(&pattern)?;
     // let JSON_RESULT: CounterWriter;
 
     let mut searcher = SearcherBuilder::new()
         .binary_detection(BinaryDetection::quit(b'\x00'))
-        .line_number(false)
+        .line_number(true)
         .build();
     // let mut printer = JSONBuilder::new().build();
     //
@@ -119,7 +119,6 @@ fn search(pattern: &str, paths: &[OsString]) -> Result<(), Box<dyn Error>> {
 
     for path in paths {
         println!("path{:?}", path);
-        // }
 
         // for result in WalkDir::new(path) {
         for result in WalkBuilder::new(path).hidden(true).build() {
@@ -133,11 +132,28 @@ fn search(pattern: &str, paths: &[OsString]) -> Result<(), Box<dyn Error>> {
             if !dent.file_type().expect("REASON").is_file() {
                 continue;
             }
+
+            let ext = Path::new(dent.path()).extension().expect("REASON");
+            // if extension is in blockList, filter them out
+            // blocklist: {extensions: []}
+            // TODO: eventually probably build the ignore crate filter version of this...
+            // essentially we have to pass the UI config, and convert it to a filter set, or do it
+            // manually here...
+            // if ext == "ts" {
+            //     continue;
+            // }
+
+            // todo use file_type like "javascript" later...
+            // https://docs.rs/ignore/latest/ignore/types/index.html
+            // if dent.file_type()
+
             let result = searcher.search_path(
                 &matcher,
                 dent.path(),
                 printer.sink_with_path(&matcher, dent.path()),
             );
+
+            println!("###result {:?}", result);
             if let Err(err) = result {
                 eprintln!("{}: {}", dent.path().display(), err);
             }
