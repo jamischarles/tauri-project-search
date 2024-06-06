@@ -133,7 +133,7 @@ fn search(pattern: &str, paths: &[OsString]) -> Result<String, Box<dyn Error>> {
                 continue;
             }
 
-            let ext = Path::new(dent.path()).extension().expect("REASON");
+            // let ext = Path::new(dent.path()).extension().expect("REASON");
             // if extension is in blockList, filter them out
             // blocklist: {extensions: []}
             // TODO: eventually probably build the ignore crate filter version of this...
