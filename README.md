@@ -2,7 +2,7 @@
 My personalized starter kit  
 
 
-Tauri + Rust + TS + vite + react + tailwind + shadcdn
+Tauri + Rust + TS + vite + react + tailwind + shadcdn + bun (package manager)
 
 
 
