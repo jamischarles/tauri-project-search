@@ -1,5 +1,5 @@
 {
-  "productName": "project-searcher2",
+  "productName": "project-searcher",
   "version": "0.0.0",
   "identifier": "com.tauri.dev",
   "build": {
@@ -12,7 +12,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "project-searcher2",
+        "title": "project-searcher",
         "width": 800,
         "height": 600
       }
