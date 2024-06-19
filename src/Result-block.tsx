@@ -1,4 +1,4 @@
-import type { ResultByFileItem } from "./lib/search-helpers"
+import type { ResultByFileItem, ResultMatchItem, ResultContextItem } from "./lib/search-helpers"
 import { useBoundStore } from "./store"
 
 
@@ -10,11 +10,6 @@ export default function ResultBlock({ data, getFileContent }: { data: ResultByFi
   const extensionsToShow = useBoundStore((state) => state.filters.selectedExtensions)
 
 
-  async function showMoreContext(path: string) {
-    const content = await getFileContent(path);
-    console.log('fileContent', content);
-  }
-
 
   if (!extensionsToShow.has(data.pathExt)) {
     return null;
@@ -22,7 +17,6 @@ export default function ResultBlock({ data, getFileContent }: { data: ResultByFi
 
 
   return (
-
     <div className="px-4 sm:px-6 lg:px-8 my-8">
       <div className="rounded-lg border bg-card text-card-foreground shadow-sm" >
         <div className="flex flex-col p-6">
@@ -32,24 +26,46 @@ export default function ResultBlock({ data, getFileContent }: { data: ResultByFi
         </div>
 
 
-
-        {data.matches.map((match, i) => (
-          <div key={i}>
-            <hr className="h-px my-2 bg-gray-200 border-0 dark:bg-gray-700" />
-            <button onClick={showMoreContext.bind(null, path)}>+</button>
-
-            <div className="file-match-row p-2 px-4 font-mono pre-whitespace text-xs">
-              <span className="text-gray-400">{match.data.line_number}:</span> <span dangerouslySetInnerHTML={{ __html: match.data.lines.tokenizedText }} />
-            </div>
-          </div>
-
-        ))}
+        {data.matches.map((match, i) => <ResultRow data={match} getFileContent={getFileContent} key={i} />)}
 
       </div>
     </div>
   );
 }
 
+
+
+function ResultRow({ data, getFileContent }: { data: ResultMatchItem | ResultContextItem }) {
+  const path = data.data.path.text;
+
+  async function showMoreContext(path: string) {
+    const content = await getFileContent(path);
+    console.log('fileContent', content);
+  }
+
+  const lineContents = data.data.lines?.tokenizedText?.map(item => {
+    if (item.isMatch) {
+      return <span className="inline-match">{item.value}</span>
+    }
+
+    return item.value;
+  })
+
+  return (
+    <div>
+      <hr className="h-px my-2 bg-gray-200 border-0 dark:bg-gray-700" />
+      {/*<button onClick={showMoreContext.bind(null, path)}>+</button> */}
+
+      <div className="file-match-row p-2 px-4 font-mono pre-whitespace text-xs">
+        <span className="text-gray-400">{data.data.line_number}:</span>
+
+        <span>
+          {lineContents}
+        </span>
+      </div>
+    </div>
+  )
+}
 
 
 /*

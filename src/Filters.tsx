@@ -29,9 +29,9 @@ export default function Filters({ }) {
   // }).filter(item => item) // only return non nullish values
 
 
+  // <h3> Filters</h3>
   return (
     <>
-      <h3> Filters</h3>
       <ToggleGroup variant="outline" type="multiple"
         value={Array.from(selectedExtensions)}
 

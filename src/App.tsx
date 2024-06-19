@@ -68,7 +68,7 @@ async function submitSearchToRust(path: string, searchQuery: string) {
   return await invoke('search_with_rg', { path, searchQuery });
 }
 
-const fileCache: Record<string, string> = {
+const fileCache: Record<string, string[]> = {
 
 }
 
@@ -79,7 +79,7 @@ async function getFileContent(path: string) {
   // check cache, and fallback to reading from disk if exists
   if (!fileCache[path]) {
     // if (await exists(path)) {
-    fileCache[path] = await readTextFile(path);
+    fileCache[path] = (await readTextFile(path)).split('\n'); // store as array of lines
     // } else {
     // throw new Error("filepath not found: " + path);
     // }
