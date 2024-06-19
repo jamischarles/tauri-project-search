@@ -1,4 +1,11 @@
-# Tauri Starter templates 
+# Project searcher app
+
+<img width="1458" alt="Screenshot 2024-06-19 at 03 05 02" src="https://github.com/jamischarles/tauri-project-search/assets/606014/0b03763d-43a7-4002-9d8c-75e95dc78de1">
+
+
+
+--------------
+## Tauri Starter templates 
 My personalized starter kit  
 
 
