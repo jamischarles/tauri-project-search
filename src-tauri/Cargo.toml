@@ -19,4 +19,6 @@ walkdir = "2.5.0"
 termcolor = "1.4.1"
 ignore = "0.4.22"
 tauri-plugin-dialog = "2.0.0-beta.9"
+tauri-plugin-fs = "2.0.0-beta.9"
+tauri-plugin-persisted-scope = "2.0.0-beta"
 

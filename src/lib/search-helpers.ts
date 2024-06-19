@@ -1,6 +1,6 @@
 // FIXME: move this into a TS file for proper hinting
 //
-type ResultSetItem = ResultStartItem | ResultMatchItem | ResultEndItem;
+type ResultSetItem = ResultStartItem | ResultContextItem | ResultMatchItem | ResultEndItem;
 
 type ResultStartItem = {
   type: "begin";
@@ -31,11 +31,38 @@ type ResultMatchItem = {
   };
 };
 
-type ReturnVal = {
-  result: (ResultSetItem | string)[];
+/** Context lines around a match */
+type ResultContextItem = {
+  type: "context";
+  data: {
+    absolute_offset: number;
+    line_number: number;
+    lines: { text: string; };
+    path: { text: string };
+    submatches: [];
+  };
+};
+
+
+
+// const defaultSearchResultSet: SearchResultDataSet = {
+//   result: [],
+//   resultByFile: [],
+//   summary: { paths: [], extensions: [] },
+// }
+
+
+// type ExtensionSummaryType = {
+//   type: 'checkbox'; count: number; label: string; value: boolean;
+// }
+
+export type SearchResultDataSet = {
+  result: ResultSetItem[];
+  resultByFile: ResultByFileItem[];
   summary: {
     paths: string[];
-  };
+    extensions: Record<string, number>;
+  }
 };
 
 type SearchSummaryType = {
@@ -56,7 +83,7 @@ type FiltersObj = {
 export function handleSearchResults(
   listStr: String,
   searchPath: string,
-): ReturnVal {
+): SearchResultDataSet {
   const basePath = searchPath;
 
   const searchSummary: SearchSummaryType = {
@@ -70,10 +97,11 @@ export function handleSearchResults(
   // console.log('###result', result);
 
   // FIXME: Consider doing this in rust, though TS seems fine place to do it for now...
-  const result = listStr.split("\n").map((lineResultStr) => {
+  // filter out blank strings first
+  const result = listStr.split("\n").filter(item => item !== "").map((lineResultStr) => {
     if (lineResultStr) {
       const lineResult: ResultSetItem = JSON.parse(lineResultStr);
-      console.log("JSON.parse(lineResult)", lineResult);
+      // console.log("JSON.parse(lineResult)", lineResult);
 
       if (lineResult.type === "begin") {
         const relativeFilePath = lineResult.data.path.text.replace(
@@ -129,19 +157,77 @@ export function handleSearchResults(
       return lineResult;
     }
 
-    return lineResultStr;
+
+    throw new Error("handleSearchResults type didn't match any of the expected types");
+    // return {}
   }); // split str by newlines, then parse the json string
 
   //massage data a little
 
+
+  const resultByFile = organizeResultByFile(result);
+
+
+
   return {
     result,
+    resultByFile,
     summary: {
       ...searchSummary,
       paths: Array.from(searchSummary.paths),
     },
   };
 }
+
+
+export type ResultByFileItem = {
+  path: string,
+  /** Extension for the path */
+  pathExt: string,
+  start: ResultStartItem,
+  end: ResultEndItem,
+  matches: (ResultMatchItem | ResultContextItem)[]
+}
+
+function organizeResultByFile(result: ResultSetItem[]): ResultByFileItem[] {
+  const output: ResultByFileItem[] = [];
+
+  let currentFileObj: ResultByFileItem;
+
+  result.forEach((item) => {
+    if (item.type === "begin") {
+      const path = item.data.path.text;
+      currentFileObj = {
+        path,
+        pathExt: path.split('.').pop() ?? "",
+        matches: [],
+        start: item,
+        // @ts-expect-error
+        end: null
+      }
+    }
+
+
+    // TODO: Add this in when we're ready to process context...
+    // if (item.type === "context") {
+    //   currentFileObj.matches.push(item)
+    // }
+
+    if (item.type === "match") {
+      currentFileObj.matches.push(item)
+    }
+
+
+    if (item.type === "end") {
+      currentFileObj.end = item;
+      output.push(currentFileObj);
+    }
+  })
+
+  return output;
+
+}
+
 
 export function isFilteredOut(path: string, filters: FiltersObj): boolean {
   // path of file in result set

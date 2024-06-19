@@ -6,9 +6,12 @@
 //     SubmoduleIgnore,
 // };
 use std::env;
-use std::path::Path;
+// use std::path::Path;
 // use std::path::Path;
 use std::str;
+// use tauri::scope::Scopes;
+// use tauri::Manager;
+use tauri_plugin_fs::FsExt;
 
 // new stuff
 use std::{error::Error, ffi::OsString, io::IsTerminal};
@@ -24,12 +27,6 @@ use {
     // termcolor::ColorChoice, // not needed for us?
     walkdir::WalkDir,
 };
-
-// Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
 
 fn main() {
     let path = env::current_dir().unwrap(); // cwd is of THIS file
@@ -51,27 +48,33 @@ fn main() {
     // 2) starting path
     // 3) ignore pattern / options (maybe just options object) that we parse here...
     //
-    let folder_to_search = project_root_path.join("src"); // ./src
-                                                          //
-    let result = match search("Greet", &[folder_to_search.into_os_string()]) {
-        Ok(result) => result,
-        Err(e) => panic!("failed to search: {}", e),
-    };
+    // let folder_to_search = project_root_path.join("src"); // ./src
+    //                                                       //
+    // let result = match search("Greet", &[folder_to_search.into_os_string()]) {
+    //     Ok(result) => result,
+    //     Err(e) => panic!("failed to search: {}", e),
+    // };
 
-    println!("result:{:?}", result);
+    // println!("result:{:?}", result);
 
     // // .plugin(tauri_plugin_shell::init())
     tauri::Builder::default()
+        .plugin(tauri_plugin_fs::init()) // file read permissions
+        // .plugin(tauri_plugin_persisted_scope::init()) // persist permissions between restarts
         // Initialize the plugin
         .plugin(tauri_plugin_dialog::init())
-        .invoke_handler(tauri::generate_handler![greet])
-        .invoke_handler(tauri::generate_handler![my_custom_command])
+        // can't call this several times.  only last one will be used
+        // https://v2.tauri.app/develop/calling-rust/#creating-multiple-commands
+        .invoke_handler(tauri::generate_handler![
+            search_with_rg,
+            update_path_scope_permissions
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
 
 #[tauri::command]
-fn my_custom_command(path: String, search_query: String) -> String {
+fn search_with_rg(path: String, search_query: String) -> String {
     println!(
         "I was invoked from JavaScript!: {} | {}",
         path, search_query
@@ -82,12 +85,27 @@ fn my_custom_command(path: String, search_query: String) -> String {
         Err(e) => panic!("failed to search: {}", e),
     };
 
-    println!("result:{:?}", result);
+    // println!("result:{:?}", result);
 
     // Err("This failed!".into());
     // FIXME: need to populate result
     result
     // "Hello from Rust!".into()
+}
+
+// https://v2.tauri.app/develop/calling-rust/#accessing-an-apphandle-in-commands
+// TODO: need to read up on traits!!!
+#[tauri::command]
+fn update_path_scope_permissions(app_handle: tauri::AppHandle, path: String) -> Result<(), String> {
+    println!("Allowing path permissions for path: {} ", path);
+
+    // allowed the given directory
+    let scope = app_handle.fs_scope();
+
+    scope.allow_directory(path, true);
+    dbg!(scope.allowed());
+
+    Ok(())
 }
 
 // TODO: don't spend longer than ONE day on this path. Don't get distracted. If CLI is simpler, go with that approach.
@@ -96,9 +114,17 @@ fn search(pattern: &str, paths: &[OsString]) -> Result<String, Box<dyn Error>> {
     let matcher = RegexMatcher::new_line_matcher(&pattern)?;
     // let JSON_RESULT: CounterWriter;
 
+    // most search options (like invert) can be found here
+    // https://docs.rs/grep-searcher/0.1.13/grep_searcher/struct.SearcherBuilder.html#method.passthru
+
     let mut searcher = SearcherBuilder::new()
         .binary_detection(BinaryDetection::quit(b'\x00'))
         .line_number(true)
+        // show 5 lines before and 5 lines after
+        // .before_context(5)
+        // .after_context(5)
+        // .passthru(true) // send whole file in result (ie: unbounded context). Will send ALL files
+        // searched... interesting...
         .build();
     // let mut printer = JSONBuilder::new().build();
     //
@@ -153,7 +179,7 @@ fn search(pattern: &str, paths: &[OsString]) -> Result<String, Box<dyn Error>> {
                 printer.sink_with_path(&matcher, dent.path()),
             );
 
-            println!("###result {:?}", result);
+            // println!("###result {:?}", result);
             if let Err(err) = result {
                 eprintln!("{}: {}", dent.path().display(), err);
             }
@@ -161,13 +187,15 @@ fn search(pattern: &str, paths: &[OsString]) -> Result<String, Box<dyn Error>> {
     }
 
     let output = String::from_utf8(printer.into_inner())?;
-    println!("RESULT OUTPUT: {:?}", output);
+    // println!("RESULT OUTPUT: {:?}", output);
 
     // FIXME: how to return this to back?
     Ok(output)
 
     // println!()
 }
+
+// app_handle.get_window("main").unwrap().open_devtools();
 
 // TODO: Move these into MODELs?
 // fn show_diff(repo: &Repository) -> Result<(), Error> {

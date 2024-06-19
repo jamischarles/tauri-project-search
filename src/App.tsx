@@ -1,193 +1,212 @@
-// import { useState } from 'react'
-// import reactLogo from './assets/react.svg'
-// import './App.css'
-//
-//
-// import { appDataDir } from '@tauri-apps/api/path';
-// import { open } from '@tauri-apps/plugin-dialog';
-// import { invoke } from '@tauri-apps/api/core';
-//
-// import { handleSearchResults, isFilteredOut } from "./lib/search-helpers";
-//
-// import { Button } from "@/components/ui/button"
-//
-//
-// // FIXME: externalize this better
-// async function submitSearchToRust(path: string, searchQuery: string) {
-//   // Invoke the command
-//   return await invoke('my_custom_command', { path, searchQuery });
-// }
-//
-//
-//
-//
-// // TODO: bind these to the UI controls. This should be state probably. yas
-// // signals in react?
-//
-//
-// async function search(folderPathToSearch: string, query: string, filters) {
-//   // returns this weird format. One string that's \n delimited json single lines {}
-//   const listStr = await submitSearchToRust(folderPathToSearch, query);
-//   const data = handleSearchResults(listStr, folderPathToSearch);
-//   const searchResult = data.result;
-//   const searchSummary = data.summary;
-//
-//   // build out UI filter set from result set
-//   // TODO: LATER: try to persist between searches... with signals?
-//   filters.extensions = Object.keys(searchSummary.extensions).map(extension => {
-//     return {
-//       type: 'checkbox', label: extension, value: true
-//     }
-//
-//
-//   })
-//
-//
-//   // debugger;
-//   console.log('#filters', filters);
-//   console.log('searchResult', data);
-//
-// }
-//
-//
-// // choose a folder to search
-// async function chooseFolder() {
-//   const selected = await open({
-//     directory: true,
-//     multiple: false,
-//     defaultPath: await appDataDir(), // TODO: Later can we default to last folder, or project root or something?
-//   });
-//
-//   folderPathToSearch = selected;
-//
-// }
-//
-// // run();
-//
-//
-// function App() {
-//   const [count, setCount] = useState(0)
-//
-//
-//   const [filters, updateFilters] = useState({ extensions: [] })
-//
-//   // UI-only filters to narrow down result set
-//   // {type, label, value}
-//   // let filters = ;
-//
-//
-//   // TODO: create react component for filters
-//
-//   return (
-//     <>
-//       <div>
-//         <a href="https://react.dev" target="_blank">
-//           <img src={reactLogo} className="logo react" alt="React logo" />
-//         </a>
-//       </div>
-//       <h1>Vite + React</h1>
-//       <h1 className="text-3xl font-bold underline">
-//         Hello world!
-//       </h1>
-//       <SearchBox />
-//       <Filters filters={filters} />
-//       <div className="card">
-//         <button onClick={() => setCount((count) => count + 1)}>
-//           count is {count}
-//         </button>
-//         <p>
-//           Edit <code>src/App.tsx</code> and save to test HMR
-//         </p>
-//       </div>
-//       <p className="read-the-docs">
-//         Click on the Vite and React logos to learn more
-//       </p>
-//
-//       <Button>Click me</Button>
-//     </>
-//   )
-// }
-//
-//
-// function Filters({ filters }) {
-//
-//   const extFilters = filters.extensions.map(ext => {
-//
-//     return (
-//       <div>
-//         <h4> Filters</h4>
-//         <input type="checkbox" id="{ext.label}" name="{ext.label}" checked={ext.value} />
-//         <label htmlFor={ext.label}>{ext.label} ({searchSummary.extensions[ext.label]})</label>
-//       </div>
-//     )
-//
-//   })
-//
-//   // < !--Represent state of filters... -->
-//   // {#each filters.extensions as ext}
-//   // {/each}
-//
-//   return (<div>
-//     {extFilters}
-//   </div>)
-//
-// }
-//
-// function SearchBox() {
-//
-//   return (<form class="row" onsubmit={search} >
-//     <input id="greet-input" autocorrect="off" autocomplete="off" placeholder="Search string" value={query} />
-//     <button type="submit">Search</button>
-//   </form >)
-// }
 
 
 
-// import Link from "next/link"
+import { Fragment, useState } from "react";
 import {
-  Bell,
-  CircleUser,
-  Home,
-  LineChart,
+  Dialog,
+  DialogPanel,
   Menu,
-  Package,
-  Package2,
-  Search,
-  ShoppingCart,
-  Users,
-} from "lucide-react"
-
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+  MenuButton,
+  MenuItem,
+  MenuItems,
+  Transition,
+  TransitionChild,
+} from "@headlessui/react";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+  Bars3Icon,
+  // BellIcon,
+  CalendarIcon,
+  ChartPieIcon,
+  // Cog6ToothIcon,
+  DocumentDuplicateIcon,
+  FolderIcon,
+  HomeIcon,
+  UsersIcon,
+  // XMarkIcon,
+} from "@heroicons/react/24/outline";
 
-import Layout from "./Layout"
 
-export function App() {
-  return <Layout />
+// import type { ResultByFileItem } from "./lib/search-helpers"
+
+// tauri integrations
+import { invoke } from '@tauri-apps/api/core';
+import { readTextFile } from '@tauri-apps/plugin-fs';
+
+
+// main components blocks to use on this page
+import SearchBox from "./Search-box";
+import Sidebar from "./Sidebar";
+import ResultBlock from "./Result-block";
+import Filters from "./Filters";
+// helpers search
+import { handleSearchResults } from "./lib/search-helpers";
+
+import type { SearchResultDataSet } from "./types"
+
+// store
+// import { useFiltersStore, useSearchResultStore } from "./store/store"
+import { useBoundStore } from "./store"
+
+
+// const navigation = [
+//   { name: "Dashboard", href: "#", icon: HomeIcon, current: true },
+//   { name: "Team", href: "#", icon: UsersIcon, current: false },
+//   { name: "Projects", href: "#", icon: FolderIcon, current: false },
+//   { name: "Calendar", href: "#", icon: CalendarIcon, current: false },
+//   { name: "Documents", href: "#", icon: DocumentDuplicateIcon, current: false },
+//   { name: "Reports", href: "#", icon: ChartPieIcon, current: false },
+// ];
+
+function classNames(...classes) {
+  return classes.filter(Boolean).join(" ");
 }
 
 
-
-
-function Link() {
-  return <a href=""></a>
+// FIXME: move this to search helpers?
+async function submitSearchToRust(path: string, searchQuery: string) {
+  // Invoke the command
+  return await invoke('search_with_rg', { path, searchQuery });
 }
 
-export default App 
+const fileCache: Record<string, string> = {
+
+}
+
+
+// File permissions reading with dynamic scope
+// https://github.com/tauri-apps/tauri/discussions/7850
+async function getFileContent(path: string) {
+  // check cache, and fallback to reading from disk if exists
+  if (!fileCache[path]) {
+    // if (await exists(path)) {
+    fileCache[path] = await readTextFile(path);
+    // } else {
+    // throw new Error("filepath not found: " + path);
+    // }
+  }
+
+  return fileCache[path];
+}
+
+export default function App() {
+  // const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // from zustand
+  const searchResult: SearchResultDataSet = useBoundStore((state) => state.searchResult)
+  const setSearchResult = useBoundStore((state) => state.setSearchResult)
+  const resetFiltersFromSearchResult = useBoundStore((state) => state.resetFiltersFromSearchResult)
+
+  // const [filters, updateFilters] = useState({ extensions: [] });
+  const [selectedPath, updateSelectedPath] = useState("");
+
+  // const [searchResult, updateSearchResult] = useState(defaultSearchResultSet)
+  // const searchResult = useSearchResultStore.getState();
+
+  async function performSearch(query: string) {
+    const listStr: string = await submitSearchToRust(selectedPath, query) as string;
+
+    // TODO: use zustand at this point?
+    debugger;
+    const data: SearchResultDataSet = handleSearchResults(listStr, selectedPath);
+    setSearchResult(data);
+    resetFiltersFromSearchResult(data.summary.extensions);
+    // useFiltersStore.setState(Object.keys(data.summary.extensions));
+
+
+    // updateSearchResult(data);
+
+
+    console.log('data', data);
+    // searchResult = data.result;
+    // searchSummary = data.summary;
+
+    // build out UI filter set from result set
+    // TODO: LATER: try to persist between searches... with signals?
+    // FIXME: Pull this out into helpers...
+    // changeFilterSelection(data.summary.extensions);
+  }
+
+
+
+  // function onFilterSelectionChange(newValues) {
+  //   const searchResultExtensions = searchResult.summary.extensions
+  //
+  //   const extensionsFilter = Object.keys(searchResultExtensions).map(extension => {
+  //     // filter selected
+  //     let isSelected = true;
+  //     if (newValues && !newValues.includes(extension)) {
+  //       isSelected = false;
+  //     }
+  //
+  //     return {
+  //       type: 'checkbox', count: searchResultExtensions[extension], label: extension, value: isSelected
+  //     }
+  //   })
+  //
+  //   updateFilters({ extensions: extensionsFilter })
+  //
+  // }
+
+
+  function updateFolderSelection(path: string) {
+    console.log('##path UPDATED', path)
+    updateSelectedPath(path);
+
+    invoke('update_path_scope_permissions', { path });
+  }
+
+
+  // nested structure
+  // const results = [];
+
+
+  // FIXME: extract into fn?
+  // ENTER when begin, EXIT on end
+  // or just EXIT and ENTER on "enter"
+  // searchResult.results.forEach(result=>{
+  //
+  //     })
+
+  console.log('###searchResult', searchResult)
+
+  // onClick={() => setSidebarOpen(true)}
+  return (
+    <>
+      <div>
+        {/* Static sidebar for desktop */}
+        <Sidebar paths={searchResult.summary.paths} />
+        <div className="lg:pl-72">
+          <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
+            <button
+              type="button"
+              className="-m-2.5 p-2.5 text-gray-700 lg:hidden"
+            >
+              <span className="sr-only">Open sidebar</span>
+              <Bars3Icon className="h-6 w-6" aria-hidden="true" />
+            </button>
+
+            {/* Separator */}
+            <div
+              className="h-6 w-px bg-gray-900/10 lg:hidden"
+              aria-hidden="true"
+            />
+
+            <SearchBox selectedPath={selectedPath} searchCb={performSearch} folderSelectedCb={updateFolderSelection} />
+          </div>
+
+          <main className="py-10">
+
+            <Filters />
+
+
+            {searchResult.resultByFile.map(result =>
+              <ResultBlock data={result} getFileContent={getFileContent} />
+            )}
+
+          </main>
+        </div>
+      </div>
+    </>
+  );
+}
+
